@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="111">
+    <author>Marcus (Cobra Modding)</author>
+    <version>1.0.0.0</version>
+	
+    <title>
+        <en>Real Tire Wear</en>
+        <de>Realistischer Reifenverschleiß</de>
+    </title>
+
+    <description>
+        <en><![CDATA[
+Real Tire Wear adds individual tire wear to supported vehicles.
+
+Features:
+- Individual wear for every wheel
+- Increased wear while slipping
+- Visual tire wear stages
+- Reduced grip with worn tires
+- Rare punctures with gradual air loss and a hissing sound
+]]></en>
+
+        <de><![CDATA[
+Real Tire Wear fügt unterstützten Fahrzeugen einen realistischen
+Reifenverschleiß hinzu.
+
+Funktionen:
+- Individueller Verschleiß für jedes Rad
+- Erhöhter Verschleiß bei Schlupf
+- Sichtbare Verschleißstufen
+- Weniger Grip bei abgefahrenen Reifen
+- Seltene Reifenpannen mit langsamem Luftverlust und Zischgeraeusch
+]]></de>
+    </description>
+
+    <iconFilename>icon_realTireWear.dds</iconFilename>
+
+    <multiplayer supported="true"/>
+	
+	<l10n>
+        <text name="rtw_axle_single"><de>Achse</de><en>Axle</en></text>
+        <text name="rtw_axle_front"><de>Vorderachse</de><en>Front axle</en></text>
+        <text name="rtw_axle_rear"><de>Hinterachse</de><en>Rear axle</en></text>
+        <text name="rtw_axle_front_numbered"><de>%d. Vorderachse</de><en>Front axle %d</en></text>
+        <text name="rtw_axle_rear_numbered"><de>%d. Hinterachse</de><en>Rear axle %d</en></text>
+        <text name="rtw_info_axle"><de>Reifenverschleiß Achse %d</de><en>Tire wear axle %d</en></text>
+        <text name="rtw_info_front"><de>Reifenverschleiß vorne</de><en>Front tire wear</en></text>
+        <text name="rtw_info_rear"><de>Reifenverschleiß hinten</de><en>Rear tire wear</en></text>
+		<text name="rtw_display_title"><de>Reifenverschleiß</de><en>Tire Wear</en></text>
+		<text name="rtw_tire_unknown"><de>Reifen %d</de><en>Tire %d</en></text>
+		<text name="input_RTW_TIRE_SERVICE"><de>Reifenservice</de><en>Tire service</en></text>
+	</l10n>
+	
+	<actions>
+		<action name="RTW_TIRE_SERVICE"/>
+	</actions>
+
+	<inputBinding>
+		<actionBinding action="RTW_TIRE_SERVICE"></actionBinding>
+	</inputBinding>
+	
+    <extraSourceFiles>	
+		<sourceFile filename="scripts/RealTireWear.lua"/>
+		<sourceFile filename="scripts/TireWearWorkshop.lua"/>
+    </extraSourceFiles>
+	
+</modDesc>
+
+<!-- Inspiriert von FS25_useYourTyres von 50keda -->

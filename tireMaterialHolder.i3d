@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<i3D
+    name="tireMaterialHolder.i3d"
+    version="1.6"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://i3d.giants.ch/schema/i3d-1.6.xsd">
+
+    <Asset>
+        <Export
+            program="GIANTS Editor 64bit"
+            version="10.0.11"/>
+    </Asset>
+
+
+    <Files>
+
+        <File
+            fileId="2"
+            filename="../shaders/realTireWearShader.xml"/>
+
+        <File
+            fileId="3"
+            filename="$data/shared/detailLibrary/nonMetallic/default_normal.png"/>
+
+        <File
+            fileId="4"
+            filename="$data/shared/detailLibrary/nonMetallic/default_specular.png"/>
+
+        <File fileId="5" filename="$data/shared/white_diffuse.png"/>
+        <File fileId="6" filename="$data/shared/wheels/tires/bkt/TF8181/tf8181_normal.png"/>
+        <File fileId="7" filename="$data/shared/wheels/tires/bkt/TF8181/tf8181_vmask.png"/>
+        <File fileId="8" filename="$data/shared/detailLibrary/nonMetallic/rubber/rubber_specular.png"/>
+        <File fileId="9" filename="$data/shared/detailLibrary/nonMetallic/rubber/rubber_normal.png"/>
+        <File fileId="11" filename="$data/shared/wheels/tires/trelleborg/T510/T510_normal.png"/>
+        <File fileId="12" filename="$data/shared/wheels/tires/trelleborg/T510/T510_vmask.png"/>
+        <File fileId="10" filename="$data/shared/detailLibrary/nonMetallic/rubber/rubberBlack_diffuse.png"/>
+
+    </Files>
+
+
+    <Materials>
+
+        <Material
+            name="realTireWearMaterial"
+            materialId="5"
+            diffuseColor="0.05 0.05 0.05 1"
+            customShaderId="2"
+            customShaderVariation="tirePressureDeformation">
+
+            <Normalmap fileId="3"/>
+            <Glossmap fileId="4"/>
+
+            <CustomParameter
+                name="scratches_dirt_snow_wetness"
+                value="0 0 0 0"/>
+
+            <CustomParameter
+                name="morphPos"
+                value="-0.45 -0.915 0.5 0.1"/>
+
+            <CustomParameter
+                name="prevMorphPos"
+                value="-0.45 -0.915 0.5 0.1"/>
+
+            <CustomParameter
+                name="realTireWearData"
+                value="0.0 0.6 1.0 0.06"/>
+
+        </Material>
+
+        <Material
+            name="realTireWearTF8181Material"
+            materialId="6"
+            customShaderId="2"
+            customShaderVariation="tirePressureDeformation">
+
+            <Texture fileId="5"/>
+            <Normalmap fileId="6"/>
+            <Glossmap fileId="7"/>
+            <Custommap name="detailSpecular" fileId="8"/>
+            <Custommap name="detailNormal" fileId="9"/>
+            <Custommap name="detailDiffuse" fileId="10"/>
+            <CustomParameter name="colorScale" value="0.0502512 0.0502512 0.0502512"/>
+            <CustomParameter name="porosity" value="0.5"/>
+            <CustomParameter name="scratches_dirt_snow_wetness" value="0 0 0 0"/>
+            <CustomParameter name="morphPos" value="-0.2398 -0.36 0.5 0.1"/>
+            <CustomParameter name="prevMorphPos" value="-0.2398 -0.36 0.5 0.1"/>
+            <CustomParameter name="realTireWearData" value="0.0 0.6 1.0 0.06"/>
+
+        </Material>
+
+        <Material
+            name="realTireWearT510Material"
+            materialId="7"
+            customShaderId="2"
+            customShaderVariation="realTireWearT510">
+
+            <!-- T510 original rubber maps and deformation parameters. -->
+            <Texture fileId="5"/>
+            <Normalmap fileId="11"/>
+            <Glossmap fileId="12"/>
+            <Custommap name="detailSpecular" fileId="8"/>
+            <Custommap name="detailNormal" fileId="9"/>
+            <Custommap name="detailDiffuse" fileId="10"/>
+
+            <CustomParameter name="colorScale" value="1 1 1"/>
+            <CustomParameter name="morphPos" value="-0.138 -0.205 0.5 0"/>
+            <CustomParameter name="prevMorphPos" value="-0.138 -0.205 0.5 0"/>
+            <CustomParameter name="porosity" value="0.5"/>
+            <CustomParameter name="scratches_dirt_snow_wetness" value="0 0 0 0"/>
+            <CustomParameter name="realTireWearData" value="0.0 0.6 1.0 0.06"/>
+
+        </Material>
+
+    </Materials>
+
+
+    <Shapes
+        externalShapesFile="tireMaterialHolder.i3d.shapes">
+    </Shapes>
+
+
+    <Scene>
+
+        <Shape
+            name="realTireWearMaterialHolder"
+            shapeId="1"
+            nodeId="8"
+            castsShadows="false"
+            receiveShadows="false"
+            materialIds="5"/>
+
+        <Shape
+            name="realTireWearTF8181MaterialHolder"
+            shapeId="1"
+            nodeId="9"
+            castsShadows="false"
+            receiveShadows="false"
+            materialIds="6"/>
+
+        <Shape
+            name="realTireWearT510MaterialHolder"
+            shapeId="1"
+            nodeId="10"
+            castsShadows="false"
+            receiveShadows="false"
+            materialIds="7"/>
+
+    </Scene>
+
+
+    <UserAttributes>
+
+        <UserAttribute
+            nodeId="8">
+
+            <Attribute
+                name="onCreate"
+                type="scriptCallback"
+                value="MaterialUtil.onCreateBaseMaterial"/>
+
+            <Attribute
+                name="materialName"
+                type="string"
+                value="REAL_TIRE_WEAR"/>
+
+        </UserAttribute>
+
+        <UserAttribute nodeId="9">
+            <Attribute name="onCreate" type="scriptCallback" value="MaterialUtil.onCreateBaseMaterial"/>
+            <Attribute name="materialName" type="string" value="REAL_TIRE_WEAR_TF8181"/>
+        </UserAttribute>
+
+        <UserAttribute nodeId="10">
+            <Attribute name="onCreate" type="scriptCallback" value="MaterialUtil.onCreateBaseMaterial"/>
+            <Attribute name="materialName" type="string" value="REAL_TIRE_WEAR_T510"/>
+        </UserAttribute>
+
+    </UserAttributes>
+
+
+</i3D>

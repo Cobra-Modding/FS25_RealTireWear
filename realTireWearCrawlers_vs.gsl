@@ -1,0 +1,124 @@
+/*
+    FS25 Real Tire Wear
+    realTireWearCrawlers_vs.gsl
+
+    Visual-only rubber crawler wear.
+
+    Important design rule:
+      The crawler's outer visual envelope is never pulled inward by wear.
+      Instead, the valleys of the tread are progressively raised toward the
+      original tread-tip plane. This makes the belt look worn/slick without
+      creating a visible gap between the track and the ground while crawler
+      physics, MotionPath data, wheel radii and collision stay unchanged.
+
+    realCrawlerWearData:
+      x = wear (0 new .. 1 fully worn)
+      y = absolute belt-body plane in local Y
+      z = absolute original tread-tip plane in local Y
+      w = outer side sign (-1 or +1)
+*/
+
+float realCrawlerSmooth01(float value)
+{
+    value = saturate(value);
+    return value * value * (3.0 - 2.0 * value);
+}
+
+float realCrawlerWearProgress(float wear)
+{
+    wear = saturate(wear);
+
+    // Keep low wear subtle, but make the last third visibly approach a slick belt.
+    float progressive = pow(wear, 0.62);
+    float highWear = realCrawlerSmooth01((wear - 0.68) / 0.32);
+    return saturate(lerp(progressive, 1.0, highWear * 0.92));
+}
+
+float realCrawlerOuterSide(float4 wearData)
+{
+    return wearData.w >= 0.0 ? 1.0 : -1.0;
+}
+
+float realCrawlerBodyAbsY(float4 wearData)
+{
+    return clamp(abs(wearData.y), 0.002, 0.100);
+}
+
+float realCrawlerOuterAbsY(float4 wearData)
+{
+    float bodyY = realCrawlerBodyAbsY(wearData);
+    return clamp(max(abs(wearData.z), bodyY + 0.005), bodyY + 0.005, 0.150);
+}
+
+float realCrawlerProfileMask(float3 position, float4 wearData)
+{
+    float side = realCrawlerOuterSide(wearData);
+    float signedY = position.y * side;
+    float bodyY = realCrawlerBodyAbsY(wearData);
+    float outerY = realCrawlerOuterAbsY(wearData);
+
+    // Only the configured OUTER belt side is modified. The inner belt face,
+    // rollers, guide geometry and the opposite side stay untouched.
+    if (signedY <= 0.0)
+        return 0.0;
+
+    float lower = realCrawlerSmooth01((signedY - (bodyY - 0.004)) / 0.004);
+    float upper = 1.0 - realCrawlerSmooth01((signedY - outerY) / 0.012);
+    return saturate(lower * upper);
+}
+
+float3 realCrawlerWearDeformPosition(float3 position, float4 wearData)
+{
+    float wear = realCrawlerWearProgress(wearData.x);
+    if (wear <= 0.0001)
+        return position;
+
+    float mask = realCrawlerProfileMask(position, wearData);
+    if (mask <= 0.0001)
+        return position;
+
+    float side = realCrawlerOuterSide(wearData);
+    float signedY = position.y * side;
+    float outerY = realCrawlerOuterAbsY(wearData);
+
+    /*
+        No-hover strategy:
+        - old approach: tread tips moved inward toward the belt body
+        - this approach: tread valleys move outward toward the original tip plane
+
+        Therefore no vertex is ever retracted toward the crawler center. The
+        lowest visible contact envelope remains at least as far out as before.
+    */
+    float wornSurfaceY = max(signedY, outerY - 0.0015);
+    float influence = saturate(wear * mask);
+
+    float3 result = position;
+    result.y = lerp(signedY, wornSurfaceY, influence) * side;
+    return result;
+}
+
+float realCrawlerSurfaceEraseFactor(float3 position, float4 wearData)
+{
+    float wear = saturate(wearData.x);
+    if (wear <= 0.0001)
+        return 0.0;
+
+    // Remove the painted/normal-map tread mainly in the second half of life.
+    float erase = realCrawlerSmooth01((wear - 0.42) / 0.55);
+    erase = saturate(erase * 1.15);
+    return saturate(erase * realCrawlerProfileMask(position, wearData));
+}
+
+float3 realCrawlerWearDeformNormal(float3 position, float3 normal, float4 wearData)
+{
+    float wear = realCrawlerWearProgress(wearData.x);
+    float mask = realCrawlerProfileMask(position, wearData);
+    float flatten = saturate(wear * mask);
+
+    if (flatten <= 0.0001)
+        return normalize(normal);
+
+    float side = realCrawlerOuterSide(wearData);
+    float3 flatNormal = float3(0.0, side, 0.0);
+    return normalize(lerp(normalize(normal), flatNormal, flatten));
+}

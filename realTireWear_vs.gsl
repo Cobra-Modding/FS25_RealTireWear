@@ -1,0 +1,175 @@
+/*
+    ===========================================================
+    FS25 Real Tire Wear
+    realTireWear_vs.gsl
+
+    Visual-only tread wear
+
+    Goal:
+      Make the tread progressively look worn/slick while keeping
+      the tire's outer visual rolling radius unchanged. This avoids
+      any need to move the wheel, axle or collision radius for wear.
+
+    realTireWearData:
+      x = wear              0..1
+      y = tire width
+      z = local outer radius
+      w = maximum tread zone
+    ===========================================================
+*/
+
+float realTireWearGetWear(float4 wearData)
+{
+    return saturate(wearData.x);
+}
+
+float realTireWearSmooth01(float value)
+{
+    value = saturate(value);
+    return value * value * (3.0 - 2.0 * value);
+}
+
+float realTireWearGetProgressiveWear(float wear)
+{
+    wear = saturate(wear);
+
+    // Stronger visual response without changing wheel physics. Low/mid wear
+    // remains progressive; from 70% onward the tread is driven rapidly toward
+    // the slick end state, comparable to the stronger reference appearance.
+    float progressive = pow(wear, 0.58);
+    float highWear = realTireWearSmooth01((wear - 0.70) / 0.30);
+
+    return saturate(lerp(progressive, 1.0, highWear * 0.90));
+}
+
+float realTireWearGetLocalRadius(float3 position)
+{
+    // Tire axis = X, radial cross section = Y/Z.
+    return length(position.yz);
+}
+
+float realTireWearGetTreadMask(float lateralPosition, float tireWidth)
+{
+    float safeHalfWidth = max(abs(tireWidth) * 0.5, 0.001);
+    float acrossTread = saturate(abs(lateralPosition) / safeHalfWidth);
+
+    // Full effect on the running surface, soft fade at the shoulder.
+    float shoulderFade = 1.0 - saturate((acrossTread - 0.68) / 0.29);
+    return realTireWearSmooth01(shoulderFade);
+}
+
+float realTireWearGetTreadEnvelope(float3 position, float4 wearData)
+{
+    float outerRadius = max(wearData.z, 0.001);
+    float reserve = max(abs(wearData.w), 0.001);
+    float radius = realTireWearGetLocalRadius(position);
+
+    // Only vertices belonging to the outer tread zone may be flattened.
+    // Sidewall/carcass geometry below the tread envelope stays untouched.
+    return saturate(
+        (radius - (outerRadius - reserve * 2.25)) /
+        max(reserve * 1.25, 0.001)
+    );
+}
+
+float realTireWearGetSmoothRunningRadius(float lateralPosition, float4 wearData)
+{
+    float outerRadius = max(wearData.z, 0.001);
+    float reserve = max(abs(wearData.w), 0.001);
+    float safeHalfWidth = max(abs(wearData.y) * 0.5, 0.001);
+    float edgeT = saturate(abs(lateralPosition) / safeHalfWidth);
+    float crown = realTireWearSmooth01(edgeT);
+    float wear = realTireWearGetWear(wearData);
+
+    // Collapse the complete tread relief toward one smooth running surface.
+    // At 100% wear the surface is only a few millimetres below the original
+    // tread peak (8% of the visual tread reserve), so the tire still appears
+    // to contact the ground while the blocks/grooves themselves disappear.
+    float endShave = reserve * 0.08 * realTireWearSmooth01((wear - 0.70) / 0.30);
+    float shoulderDrop = min(abs(wearData.y) * 0.0100, reserve * 0.24) * crown;
+    return max(outerRadius - endShave - shoulderDrop, 0.001);
+}
+
+float realTireWearGetTargetRadius(float3 position, float4 wearData)
+{
+    float currentRadius = realTireWearGetLocalRadius(position);
+    if (currentRadius <= 0.001)
+        return currentRadius;
+
+    float wear = realTireWearGetWear(wearData);
+    if (wear <= 0.0001)
+        return currentRadius;
+
+    float treadMask = realTireWearGetTreadMask(position.x, wearData.y);
+    float envelope = realTireWearGetTreadEnvelope(position, wearData);
+    float influence = saturate(realTireWearGetProgressiveWear(wear) * treadMask * envelope);
+
+    if (influence <= 0.0001)
+        return currentRadius;
+
+    float smoothRadius = realTireWearGetSmoothRunningRadius(position.x, wearData);
+
+    /*
+        Strong visual-only profile loss:
+
+        Both tread valleys and tread peaks converge toward the same smooth
+        running surface. This is the key difference from the previous version,
+        which only filled the grooves and therefore left tall geometric lugs
+        visible. Wheel radius/physics, axle position and collision remain
+        completely untouched; only tire vertices inside the tread mask move.
+    */
+    float targetRadius = lerp(currentRadius, smoothRadius, influence);
+
+    // Guard malformed geometry, but allow high tread peaks to move inward so
+    // the visible lugs can actually wear down.
+    float reserve = max(abs(wearData.w), 0.001);
+    float upperGuard = max(wearData.z, 0.001) + reserve * 0.35;
+    float lowerGuard = max(wearData.z, 0.001) - reserve * 0.35;
+    return clamp(targetRadius, max(lowerGuard, 0.001), upperGuard);
+}
+
+float realTireWearSurfaceEraseFactor(float3 position, float4 wearData)
+{
+    float wear = realTireWearGetWear(wearData);
+
+    // Texture/normal cleanup begins later than geometric relief flattening.
+    // At high wear the original tread normal/AO is neutralized so deep-looking
+    // grooves do not remain painted onto an otherwise slick tire.
+    float removalState = realTireWearSmooth01((wear - 0.42) / 0.50);
+    removalState = saturate(removalState * 1.20);
+    float treadMask = realTireWearGetTreadMask(position.x, wearData.y);
+    float envelope = realTireWearGetTreadEnvelope(position, wearData);
+
+    return saturate(removalState * treadMask * envelope);
+}
+
+float3 realTireWearDeformPosition(float3 position, float4 wearData)
+{
+    float currentRadius = realTireWearGetLocalRadius(position);
+    if (currentRadius <= 0.001)
+        return position;
+
+    float targetRadius = realTireWearGetTargetRadius(position, wearData);
+    if (abs(targetRadius - currentRadius) <= 0.00001)
+        return position;
+
+    float2 radialDirection = position.yz / currentRadius;
+    float3 result = position;
+    result.y = radialDirection.x * targetRadius;
+    result.z = radialDirection.y * targetRadius;
+    return result;
+}
+
+float3 realTireWearDeformNormal(float3 position, float3 normal, float4 wearData)
+{
+    float erase = realTireWearSurfaceEraseFactor(position, wearData);
+    if (erase <= 0.0001)
+        return normalize(normal);
+
+    float radialLength = length(position.yz);
+    if (radialLength <= 0.0001)
+        return normalize(normal);
+
+    float3 radialNormal = float3(0.0, position.y / radialLength, position.z / radialLength);
+    return normalize(lerp(normalize(normal), radialNormal, erase));
+}
